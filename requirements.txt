@@ -1,0 +1,8 @@
+# Runtime: Python 3.12. Live capture and control require Windows.
+pyserial>=3.5,<4
+# Omitted on macOS/Linux so offline tools and tests can run there.
+dxcam>=0.3,<0.4; sys_platform == "win32"
+numpy>=2,<3
+opencv-python>=4.10,<5
+pyyaml>=6,<7
+pydantic>=2,<3

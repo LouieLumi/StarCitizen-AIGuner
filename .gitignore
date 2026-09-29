@@ -1,0 +1,41 @@
+# Python and development tools
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.ruff_cache/
+
+# Firmware outputs
+firmware/build/
+firmware/build-*/
+*.uf2
+*.elf
+*.o
+*.map
+
+# Runtime data (may contain desktop captures or player names)
+logs/*
+!logs/.gitkeep
+recordings/*
+!recordings/.gitkeep
+*.avi
+*.mp4
+*.mkv
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+config/*.local.yaml
+*.pem
+*.key
+
+# Editors and OS metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

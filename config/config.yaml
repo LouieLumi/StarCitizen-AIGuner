@@ -1,0 +1,139 @@
+# AI Gunner configuration. Coordinates are physical screen pixels.
+
+screen:
+  width: 2560
+  height: 1440
+
+capture:
+  device_idx: 0      # GPU, see dxcam.device_info()
+  output_idx: 0      # monitor on that GPU, see dxcam.output_info()
+  target_fps: 120    # capture thread polling rate; real frame rate is capped by the game / monitor
+
+# Region processed every frame (turret HUD area). Default: 1200x900 centred.
+roi:
+  x: 680
+  y: 270
+  width: 1200
+  height: 900
+
+# Crosshair centre in ROI px (screen 1280,728). Only a fallback: the detector
+# finds the crosshair bars every frame.
+aim:
+  center_x: 600
+  center_y: 458
+
+# HSV ranges measured on lossless 2560x1440 captures (see docs/hud.md).
+crosshair:
+  white_lower: [0, 0, 220]
+  white_upper: [180, 60, 255]
+
+pip:
+  bright_v_min: 190           # chevron shapes: bright pixels (keeps chromatic fringes)...
+  saturated_min: 120          # ...that are unsaturated, or saturated with a hue in keep_hue
+  keep_hue: [20, 90]          # (drops red brackets / blue gun ticks touching a chevron)
+  green_lower: [50, 90, 150]  # green pip = target in weapon range
+  green_upper: [80, 255, 255]
+  min_area: 4        # per blob; split chevron arms can be this small
+  max_area: 90
+  min_radius: 10
+  max_radius: 45
+
+# Weapon range (M6): green range ring around the crosshair + green pip, filtered in time.
+range:
+  ring_lower: [55, 110, 120]
+  ring_upper: [70, 255, 255]
+  ring_radius: [110, 210]  # px from the crosshair centre (seen 120-172)
+  ring_skip_deg: 20        # skip left/right sectors: ammo counters have green underlines
+  ring_min_share: 0.4      # share of the circle that must be green (stills: 0.83-0.92 vs <= 0.01)
+  min_ms: 80               # in range only after green evidence this long...
+  min_frames: 3            # ...and this many frames in a row
+  release_frames: 2        # once in range, out only after this many frames against in a row
+
+# Auto fire (M7): only while the weapons switch is on (panel / --auto-fire).
+# Opens fire once the tracked target is in weapon range (green, >= 80 ms), then keeps
+# firing until the target has not been locked (no tracked / detected pip) for a while.
+fire:
+  stop_after_unlocked_s: 1.0  # cease fire once the target is gone this long
+  max_burst_s: 0        # 0 = continuous fire; >0 = hold at most this long...
+  release_s: 0.3        # ...then let go this long
+  button: 1             # HID mouse buttons: 1 = left
+
+# Kalman tracker for the lead pip (ROI px).
+tracker:
+  meas_sigma_px: 3.0      # pip position noise (four chevrons; doubled for three)
+  accel_sigma: 2000       # px/s^2 the pip may accelerate on screen (our own turning is taken out
+                          # via OwnMotion). tools/track_replay.py on live logs: 1000 -> 2000
+                          # cut tracks lost with the pip still in view from 33 to 3
+  init_speed_px_s: 400    # velocity uncertainty of a new track
+  gate: 25                # innovation gate, chi-square 2 dof. 13.8 rejected good pips on hard
+                          # maneuvers (replay of live logs: accepted 80% -> 88%, restarts 25 -> 4)
+  lost_after_ms: 200      # no accepted measurement for this long = target lost
+  acquire_frames: 3       # new target only after this many consecutive complete pips...
+  acquire_max_step_px: 60 # ...the second within this of the first (60 px/frame = 1800 px/s)...
+  acquire_agree_px: 20    # ...later ones within this of where the previous two put them...
+  acquire_radius_px: 250  # ...and within this of the crosshair (bright hulls fake single pips)
+
+# Locked-target search: turn towards the target locked with T until its pip is near
+# the crosshair. Full-screen px.
+finder:
+  scale: 0.5                  # search on a half-size frame (sizes stay full-res px)
+  every: 3                    # run the finder on every 3rd frame while searching (~20 ms each)
+  red_lower1: [0, 150, 150]
+  red_upper1: [8, 255, 255]
+  red_lower2: [172, 150, 150]
+  red_upper2: [180, 255, 255]
+  arrow_radius: [230, 300]    # red off-screen arrow circles the crosshair at ~245-280 px
+  label_to_target_px: 110     # target is ~87-144 px above its red name label
+  exclude:                    # [x0, y0, x1, y1] screen px: HUD panels with red text
+    - [0, 540, 530, 1080]     # chat (red player names)
+    - [0, 0, 320, 420]        # ship hologram / weapon groups
+    - [2150, 0, 2560, 700]    # target info panel: repeats the locked target's name + range
+    - [1750, 1080, 2560, 1440]  # key-hint panel (fire / sub-target / gimbal / precision)
+    - [0, 1080, 800, 1440]    # power / ammo display
+  slew_counts: 20             # max mouse counts per frame turning to an on-screen target
+  arrow_counts: 60            # counts per frame following the off-screen arrow (~45 deg/s)
+  slew_kp: 0.3                # counts per px towards an on-screen target
+  label_hold_px: 200          # label estimate this close: hold still and let the tracker confirm the pip
+  slew_timeout_s: 10          # give up after this long without reaching the pip
+  label_hold_s: 0.7           # hold still near the label this long waiting for the pip...
+  label_close_px: 50          # ...then keep closing in to this (far targets show no pip)
+  lock_key: 0x17              # no locked target in sight: tap this key (HID usage, 0x17 = T; 0 = off)...
+  lock_after_s: 2.0           # ...after this long without a label / arrow...
+  lock_every_s: 3.0           # ...at most this often (never while a target is locked)
+  lock_hold_s: 0.06
+
+# PD controller: aim error (px) -> mouse counts per frame. FPS-mode turret: 1 count ~ 0.75 px.
+control:
+  px_per_count: 1.2       # view shift per count (turret_ident, 2 dithered sessions: 1.1-1.3)
+                          # kp/kff/lead below: no oscillation in simulation over gain 1.0-1.4,
+                          # delay 4-6, smoothing 0.65-0.85
+  coast_hold_ms: 50       # no fresh pip for longer than this: hold still instead of chasing the prediction
+  kp_x: 0.15
+  kd_x: 0.0
+  kp_y: 0.15
+  kd_y: 0.0
+  kff: 1.0                # feed-forward: share of the pip's own velocity (tracker) turned with
+  ff_min_speed: 30        # px/s; slower counts as standing still (velocity estimate noise)
+  view_delay_frames: 5    # turret response (tools/turret_ident.py): first frame our turn shows in (1 = next)
+  view_smoothing: 0.75    #   then each frame closes this share of what's left: 1 - view_smoothing
+  smith_predictor: true   # count commanded-but-not-yet-visible turn as done
+  lead_target: true       # aim where the pip will be once our turn shows (velocity x turret delay)
+  lead_scale: 0.8         # ...by this share of that delay
+  deadzone_x: 5
+  deadzone_y: 5
+  max_mouse_dx: 45
+  max_mouse_dy: 45
+  gain_schedule:          # [min |error| px, gain]: full gain far away, softer close in
+    - [300, 1.0]
+    - [100, 1.0]
+    - [0, 0.8]
+
+# Lossless video can use several GB per minute. Choose a disk with enough free space.
+recording:
+  dir: 'recordings'  # relative to the project root, or an absolute path
+  codec: ffv1        # ffv1 = lossless, mjpg = smaller / cheaper
+
+# Mouse moves, fire and key presses go out only while this program has the focus
+# (else they would move / click the desktop cursor).
+game:
+  exe: StarCitizen.exe
