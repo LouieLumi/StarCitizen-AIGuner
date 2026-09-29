@@ -2,8 +2,6 @@
 
 [中文](README.md) · [Implementation](docs/architecture.md) · [Firmware](docs/firmware.md) · [Usage and debugging](docs/usage.md)
 
-I developed this external automatic gunner for my own Star Citizen credit farming runs (高塔). I have tested the complete system in-game and use it regularly.
-
 The program detects the turret HUD from screen captures, tracks the game's lead pip, and sends USB mouse and keyboard input through a Pico. It handles target search, aiming and automatic fire using computer vision and control algorithms, without reading game memory or injecting code into the game process.
 
 My setup uses **Windows, Python 3.12 and a Pico 2 W**. The included configuration is calibrated for a **2560×1440 display and a Polaris turret in FPS mouse mode**. Other resolutions, turrets and sensitivity settings require corresponding adjustments.
