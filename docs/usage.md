@@ -2,7 +2,7 @@
 
 [返回首页](../README.md) · [固件与协议](firmware.md)
 
-这里放的是日常操作和调试会用到的命令。先按首页装好环境，下面都在项目根目录的 Windows PowerShell 里运行。
+以下命令用于日常操作、录制和调试。完成首页的安装步骤后，在项目根目录的 Windows PowerShell 中执行。
 
 ## 测试
 
@@ -13,7 +13,7 @@
 .venv\Scripts\python.exe tools\pico_test.py            # 链路 + 上下左右移动 + STOP + 看门狗（会先确认）
 .venv\Scripts\python.exe tools\pico_test.py --click    # 追加左键按下/松开测试
 .venv\Scripts\python.exe tools\pico_test.py --joystick # 摇杆轴/按键，经 Windows WinMM 读回校验 + 看门狗回中
-.venv\Scripts\python.exe tools\pico_test.py --keyboard # 键盘：按一下 F24（谁都不用的键），经 Windows 读回校验
+.venv\Scripts\python.exe tools\pico_test.py --keyboard # 键盘：发送 F24，经 Windows 读回校验
 .venv\Scripts\python.exe tools\joy_bind_helper.py --axis x   # 倒计时后摆动 X 轴，供游戏内绑定
 
 .venv\Scripts\python.exe tools\capture_test.py                          # 预览窗口，q / Esc 退出
@@ -42,8 +42,8 @@ powershell -ExecutionPolicy Bypass -File tools\desktop_run.ps1 -Remove   # 删�
 - 最下面一行是状态；游戏不在前台时变红，此时不移动鼠标、不开火、不按键
 - `--no-panel` 不显示浮窗
 
-没有键盘快捷键，全部用浮窗控制。关控制台窗口 = 退出程序。
-打开聊天框前先把火控关掉，否则自动按的 T 会打进聊天框。
+目前通过浮窗控制各项开关，未设置键盘快捷键。关闭控制台窗口即可退出程序。
+打开聊天框前请关闭火控，避免自动锁定指令 T 被输入到聊天框。
 
 ```powershell
 .venv\Scripts\python.exe host\main.py --enable --auto-fire   # 两个开关都开（start_gunner.bat）

@@ -1,42 +1,62 @@
 # StarCitizen AIGuner
 
-[中文](README.md)
+[中文](README.md) · [Implementation](docs/architecture.md) · [Firmware](docs/firmware.md) · [Usage and debugging](docs/usage.md)
 
-This is an automatic turret gunner I built for my own Star Citizen credit farming runs (高塔). I've tested the complete setup in-game and use it myself.
+I developed this external automatic gunner for my own Star Citizen credit farming runs (高塔). I have tested the complete system in-game and use it regularly.
 
-It watches the HUD, follows the lead pip, and uses a Pico to send mouse input to the turret. It can find locked targets, turn toward them and fire when they come into range. It doesn't read game memory or inject code into the game.
+The program detects the turret HUD from screen captures, tracks the game's lead pip, and sends USB mouse and keyboard input through a Pico. It handles target search, aiming and automatic fire using computer vision and control algorithms, without reading game memory or injecting code into the game process.
 
-My setup is **Windows, Python and a Pico 2 W**, with a **2560×1440 display and a Polaris turret in FPS mouse mode**. The included settings are tuned for that setup. If you change the resolution, turret or sensitivity, you'll need to adjust them.
+My setup uses **Windows, Python 3.12 and a Pico 2 W**. The included configuration is calibrated for a **2560×1440 display and a Polaris turret in FPS mouse mode**. Other resolutions, turrets and sensitivity settings require corresponding adjustments.
 
 ## Disclaimer
 
-I made this for my own credit farming runs and am sharing the code to show how it works. **CIG does not allow this kind of automation. Using it may result in a ban or other account penalties.**
+**CIG does not allow this kind of automation. Using this project may result in a ban or other account penalties.**
 
-Whether to use it is your decision. You are responsible for any bans, account losses or other consequences from using this project. I accept no responsibility for those consequences.
+Publishing the source is intended to share the implementation and does not imply authorization from CIG. Use is at your own discretion. Users assume responsibility for bans, account losses and other consequences arising from use of this project; the author accepts no responsibility for those consequences.
 
 ![Detection and tracking from recorded gameplay](docs/assets/track_strip.png)
 
-## How it works
+## Implementation
 
-The game already draws a lead pip, so I use that as the aiming point. There's no large language model or cloud API involved.
-
-**DXCAM** captures the screen. **OpenCV** finds the crosshair, lead pip and range ring using their colors and shapes. When the pip isn't visible, the controller follows the red target label or off-screen arrow. If it can't find a locked target, it tries pressing T.
-
-A **Kalman filter** tracks the pip's position and velocity through short gaps in detection. The controller uses **PD control, velocity feed-forward and a Smith predictor** to turn that into mouse movement. The delay matters: a mouse command takes a few frames to show up as turret motion. I keep track of commands that haven't appeared on screen yet so the controller doesn't keep correcting the same error and overshoot.
-
-**pyserial** sends the commands over USB to the Pico. The firmware is written in **C with the Pico SDK and TinyUSB**, and presents serial and HID interfaces to the computer. Everything runs on the gaming PC with the Pico plugged into USB; no second PC or Wi-Fi connection is needed.
+The game HUD already provides a lead pip, so I use that as the aiming target. The program does not calculate ballistics or require model weights or a cloud API.
 
 ```text
-Game screen → DXCAM → OpenCV → tracking and control → USB serial → Pico → mouse/keyboard input
+Game screen → capture → HUD detection → tracking and control → USB serial → Pico HID → game input
 ```
 
-More detail is in the [implementation notes](docs/architecture.md) and [HUD notes](docs/hud.md).
+**Detection.** DXCAM captures the screen. OpenCV identifies the crosshair, lead pip and range ring using HSV color ranges, connected components and shape features. When no pip is available, the controller turns toward a red target label or off-screen arrow. If no lock indication is visible for a configured period, it attempts to lock a target with T.
 
-## Installation
+**Tracking.** A Kalman filter estimates the pip's position and velocity, rejects outliers and handles brief occlusions. New tracks require confirmation across consecutive frames; established tracks can accept partially occluded observations near the predicted position.
 
-You'll need a Pico 2 W, a USB data cable, Python 3.12 and Git. The live controller runs on Windows.
+**Control.** A PD controller converts aiming error into mouse movement, with velocity feed-forward. Turret response includes delay and smoothing, so correcting only the current screen error can cause overshoot. I added own-motion compensation and a Smith predictor to account for screen motion caused by the turret and for commands that have not yet appeared in the captured frame.
 
-In PowerShell:
+**Input.** Python sends commands through pyserial. The Pico firmware uses C, the Pico SDK and TinyUSB to provide USB CDC serial, mouse/keyboard HID and a reserved seven-axis, 32-button joystick interface. The host program and game run on the same computer, with the Pico connected over USB.
+
+**Range and firing.** Range detection combines the green pip and range ring, requiring at least 80 ms and three consecutive frames of evidence. With automatic fire enabled, firing begins when the conditions are met and continues until the target has been lost for one second by default. Tracking and weapons have separate switches.
+
+### Technology
+
+| Technology | Role |
+|---|---|
+| Python 3.12 | Host loop, recording, replay and debugging tools |
+| DXCAM / DXGI | Windows screen capture and frame timestamps |
+| OpenCV / NumPy | HUD processing, feature detection and numerical operations |
+| Kalman filter | Lead-pip position and velocity estimation |
+| PD control, feed-forward, Smith predictor | Turret tracking and delay compensation |
+| Pydantic / YAML | Configuration loading and validation |
+| pyserial | Host-to-Pico serial communication |
+| C / Pico SDK / TinyUSB | Pico firmware and USB HID input |
+| Windows API | Game focus detection and control panel |
+
+See the [implementation notes](docs/architecture.md) and [HUD notes](docs/hud.md) for details.
+
+## Installation and configuration
+
+The live controller requires Windows, Python 3.12, Git, a Pico 2 W and a USB data cable.
+
+### Host setup
+
+Run in PowerShell:
 
 ```powershell
 git clone https://github.com/LouieLumi/StarCitizen-AIGuner.git
@@ -45,49 +65,69 @@ py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Build and flash the Pico using the [firmware instructions](docs/firmware.md). This needs the ARM toolchain, Pico SDK, CMake, Ninja and picotool. Once flashed, it appears as `AI Crew Controller`; the host finds its serial port automatically.
+### Firmware
 
-Edit [`config/config.yaml`](config/config.yaml) for your screen and monitor. The default ROI starts at `(680,270)` and is `1200×900` pixels. `aim` coordinates are relative to that ROI. At other resolutions, you'll also need to adjust the finder exclusion areas, shape sizes and range-ring radius; they don't scale automatically.
+Build and flash the Pico following the [firmware instructions](docs/firmware.md). This requires the ARM toolchain, Pico SDK, CMake, Ninja and picotool.
 
-You can copy the config to `config/config.local.yaml` and pass `--config config/config.local.yaml` when starting. Git ignores that local file.
+After flashing, the device appears as `AI Crew Controller`. The host locates its serial port by VID/PID automatically.
+
+### Configuration
+
+Edit [`config/config.yaml`](config/config.yaml):
+
+| Section | Setting |
+|---|---|
+| `screen` | Screen resolution; default 2560×1440 |
+| `capture` | GPU and monitor used for capture |
+| `roi` | HUD detection region; default origin `(680,270)`, size `1200×900` |
+| `aim` | Fallback crosshair position relative to the ROI |
+| `control` | Turret response model, gains and mouse limits |
+| `recording.dir` | Video and event-screenshot directory; default `recordings/` |
+
+Other resolutions also require changes to the finder exclusion areas, shape sizes and range-ring radius. These are pixel-based parameters and do not scale automatically.
+
+Personal settings can be saved in `config/config.local.yaml` and selected with `--config config/config.local.yaml`. Git ignores this file.
 
 ## Usage
 
-Enter the turret and switch it to **FPS mouse mode**. The controller is tuned for that mode; in virtual joystick mode, stopping mouse movement can leave the turret turning.
+Enter the turret and select **FPS mouse mode**. The controller is calibrated for that mode; in virtual joystick mode, stopping mouse movement does not necessarily stop turret rotation.
 
-For normal use, double-click **`start_gunner.bat`**. It starts with tracking and automatic fire enabled.
+Double-click **`start_gunner.bat`** to start with fire control and automatic fire enabled. The program searches for targets, turns toward them, tracks the pip and fires when range conditions are met.
 
-The floating panel has two switches: **火控系统** controls target locking, search and tracking; **武器系统** controls automatic fire. You can leave tracking on and fire manually. Drag the panel to move it and use its lock button to hold it in place.
+The floating panel has two switches:
 
-Input pauses when you switch away from the game. Close the console or press Ctrl+C to quit. **Turn off fire control before opening chat**, or the automatic T key can end up in your message.
+- **火控系统** (fire control): automatic locking, search and tracking. Turning it off stops all control.
+- **武器系统** (weapons): automatic fire. Tracking can remain active while firing manually.
 
-From a terminal in the project directory:
+The panel can be dragged and locked in place. Input pauses when the game loses focus. Close the console or press Ctrl+C to exit.
+
+Command-line equivalents, run from the project directory:
 
 ```powershell
-# Start with both switches off; turn them on in the panel
+# Start with both switches off; enable them through the panel
 .venv\Scripts\python.exe host\main.py
 
-# Start tracking and auto fire, just like the batch file
+# Enable tracking and automatic fire, as with the batch file
 .venv\Scripts\python.exe host\main.py --enable --auto-fire
 
-# Run detection and tracking without sending input; no Pico needed
+# Run detection and tracking without HID output; no Pico required
 .venv\Scripts\python.exe host\main.py --dry-run --enable --seconds 30
 ```
 
-Run these in the logged-in Windows desktop session. For SSH, see `desktop_run.ps1` in the [usage guide](docs/usage.md).
+Run in the logged-in Windows desktop session. For SSH, use `desktop_run.ps1` as described in the [usage guide](docs/usage.md).
 
-Auto fire starts after the range signal stays stable, then keeps firing until the target has been lost for one second. Change that delay with `fire.stop_after_unlocked_s`. Turning either switch off stops firing. The Pico also releases its outputs after 100 ms without new commands.
+Disable fire control before opening chat to prevent the automatic T lock key from being entered into the chat box. Turning off fire control or weapons stops firing. The lost-target firing delay is set by `fire.stop_after_unlocked_s`, with a default of one second. The Pico releases buttons, stops mouse movement and centers the joystick after 100 ms without new commands.
 
-## Working on it
+## Source and debugging
 
-`host/` contains the Python code and `firmware/` contains the Pico code. Recording, replay, detection debugging and calibration tools live in `tools/`; commands are in the [usage guide](docs/usage.md).
+`host/` contains the Python controller, `firmware/` the Pico firmware, `config/` the settings, and `tools/` the recording, replay, detection and calibration utilities. Offline tests are in `tests/`.
 
-If you change turrets or sensitivity, `tools/turret_ident.py` can help measure the response delay, smoothing and gain. Offline replay lets you tune detection against the same recording without connecting a Pico. Logs and recordings go to `logs/` and `recordings/`, both ignored by Git. Lossless video uses a lot of disk space.
+After changing turrets or sensitivity, use `tools/turret_ident.py` to measure response delay, smoothing and gain. Offline replay requires no Pico and allows detection settings to be compared against the same recording.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for offline tests. If you open an issue, include your resolution, turret, config and a frame showing the problem where possible.
+Logs, recordings and personal settings are excluded from Git. Lossless recording can consume several GB per minute. Tool commands are documented in the [usage guide](docs/usage.md); development setup and offline tests are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-I'm sharing the code for people to study, use and modify **for noncommercial purposes**. The terms are in [PolyForm Noncommercial 1.0.0](LICENSE). Keep the license and [copyright notice](NOTICE) when redistributing it.
+This project uses [PolyForm Noncommercial 1.0.0](LICENSE), permitting noncommercial use, modification and redistribution under its terms. **Commercial use is not granted.** Preserve the license and [copyright notice](NOTICE) when redistributing.
 
-This is a personal project, with no official connection to CIG or RSI. Star Citizen imagery and trademarks belong to their respective owners.
+This is my personal project and has no official affiliation with CIG or RSI. Star Citizen imagery and trademarks belong to their respective owners.

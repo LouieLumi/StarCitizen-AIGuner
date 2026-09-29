@@ -2,13 +2,13 @@
 
 [返回首页](../README.md)
 
-我用的是 Pico 2 W（RP2350），固件版本字符串为 `AI-CREW-FW 0.3.0 pico2_w`。
+我使用的开发板是 Pico 2 W（RP2350），固件版本字符串为 `AI-CREW-FW 0.3.0 pico2_w`。
 USB 组合设备名称为 `AI Crew Controller`：CDC 串口 + 鼠标/键盘 HID + 摇杆 HID。
-VID:PID 用的是开发测试值 `CAFE:4143`，主机靠它自动查找串口。
+VID:PID 使用开发测试值 `CAFE:4143`，主机据此自动查找串口。
 
 ## 构建环境
 
-我编译固件用的是 ARM GNU Toolchain 14.3.rel1、Pico SDK 2.3.1（含 TinyUSB 子模块）、picotool 2.3.1、CMake 和 Ninja。下面按 Windows PowerShell 写步骤。
+我的固件编译环境使用 ARM GNU Toolchain 14.3.rel1、Pico SDK 2.3.1（含 TinyUSB 子模块）、picotool 2.3.1、CMake 和 Ninja。以下步骤使用 Windows PowerShell。
 
 需要自行安装：
 
@@ -26,7 +26,7 @@ $env:PATH = "$(Get-Location)\.venv\Scripts;$env:PATH"
 powershell -ExecutionPolicy Bypass -File firmware\build.ps1
 ```
 
-编译完成后，固件在 `firmware/build/ai_crew_fw.uf2`。工具没放在 PATH 里的话，可以给脚本传路径：
+编译输出为 `firmware/build/ai_crew_fw.uf2`。也可通过脚本参数指定 SDK 和工具路径：
 
 | 参数 | 作用 |
 |---|---|
