@@ -2,7 +2,7 @@
 
 [返回首页](../README.md) · [固件与协议](firmware.md)
 
-先完成首页的环境安装和配置。以下命令适用于 Windows PowerShell，均从项目根目录执行。
+这里放的是日常操作和调试会用到的命令。先按首页装好环境，下面都在项目根目录的 Windows PowerShell 里运行。
 
 ## 测试
 
@@ -35,6 +35,7 @@ powershell -ExecutionPolicy Bypass -File tools\desktop_run.ps1 -Remove   # 删�
 没有锁定目标 2 s 自动按 T → 转向目标 → 跟踪 → 变绿开火 → 锁定丢失 1 s 停火 → 再按 T。
 
 浮窗控制面板（半透明黑底，始终置顶，点击不抢游戏焦点）：
+
 - **火控系统**：开 = 自动锁定 / 寻找 / 跟踪；关 = 全部停止（也会解除急停）
 - **武器系统**：开 = 进入射程自动开火；关 = 不开火（火控关着时也会记住这个选择）
 - 右上角的锁：开锁时可拖动，点一下固定位置；位置和锁定状态存在 `logs\panel.json`
@@ -50,8 +51,7 @@ powershell -ExecutionPolicy Bypass -File tools\desktop_run.ps1 -Remove   # 删�
 .venv\Scripts\python.exe host\main.py --dry-run    # 全流程运行但绝不动鼠标
 ```
 
-只有"有目标轨迹 + 0.3 秒内看到准星"时才会移动鼠标，所以菜单里、离开炮塔时不会动。
-没有目标轨迹时（ARMED / SEARCHING），会朝游戏里锁定（T）的目标转过去，找到提前量点后交给跟踪。
+跟踪时，需要有目标轨迹，并且最近 0.3 秒内看到过准星，才会输出跟踪用的鼠标位移。没有轨迹时，会在看到准星的情况下朝锁定目标搜索，找到提前量点后再交给跟踪。
 
 炮塔响应标定（改了游戏灵敏度、换了炮塔后重做）：
 
@@ -61,7 +61,7 @@ powershell -ExecutionPolicy Bypass -File tools\desktop_run.ps1 -Remove   # 删�
 ```
 远程停止：创建 `logs\stop_main`。每帧写入 `logs\session_*.csv`，关键事件截图存放于 `recording.dir` 下。
 
-## 离线工具（不发送任何 HID）
+## 录制和离线工具（不发送 HID）
 
 ```powershell
 .venv\Scripts\python.exe tools\record_session.py                 # 录整局（全屏 MJPG + 每 5 秒无损截图），停止：PowerShell 运行 New-Item logs\stop_record -ItemType File -Force

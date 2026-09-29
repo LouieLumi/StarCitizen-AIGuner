@@ -1,31 +1,33 @@
-# 贡献指南 / Contributing
+# 一起改
 
-欢迎提供可复现的问题、文档改进和代码变更。提交的原创贡献按本仓库的 [PolyForm Noncommercial 1.0.0](LICENSE) 许可提供；请保留第三方代码的原始许可及归属，不提交无权分发的素材。
+有问题可以提 Issue，有改进也欢迎直接提 PR。如果是识别不准，尽量带上分辨率、炮塔、配置和一张出问题的画面；只有一句“没跟上”，我这边很难复现。截图里的聊天和个人信息记得先遮一下。
 
-Contributions are provided under this repository's noncommercial license. Preserve third-party notices and submit only material you may distribute.
+## 本地跑测试
 
-## 离线开发
+我用 Python 3.12。Windows 环境按首页安装后，再装开发依赖：
 
-使用 Python 3.12。在 Windows 按首页安装；macOS / Linux：
+```powershell
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.venv\Scripts\python.exe -m pytest -q
+```
+
+macOS / Linux 也能跑离线测试和回放：
 
 ```sh
 python3.12 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/python -m pytest -q
-.venv/bin/python -m compileall -q host tools tests
 .venv/bin/python tools/controller_test.py
 ```
 
-`requirements.txt` 只在 Windows 安装 DXCAM，方便其他平台运行离线逻辑。实时入口使用 Windows API，不能由此推断 macOS / Linux 支持实时运行。
+实时截屏和浮窗用到了 Windows API，要在 Windows 上跑。依赖文件只会在 Windows 下安装 DXCAM。
 
-pytest 仅收集 `tests/` 下的测试，避免把 `tools/pico_test.py` 等硬件诊断脚本当成自动测试。新增控制或协议行为时，优先使用合成输入或模拟串口验证。
+`tests/` 是不接硬件的测试，`tools/pico_test.py` 是会实际操作 Pico 的工具，pytest 不会收集它。
 
-## 提交变更
+## 提交改动
 
-- 描述具体问题、行为变化、验证命令及结果。
-- 改动配置或操作流程时同步中英文首页及对应文档。
-- 标明哪些验证是离线的、哪些实际连接了 Windows 游戏或 Pico。
-- 提交检测问题时附分辨率、游戏/HUD 版本和最小截图；隐藏聊天和个人信息。
-- 不提交虚拟环境、SDK、编译输出、会话录像、凭据或个人配置。
+PR 里说清楚改了什么、解决什么问题、怎么试过就行。涉及捕获或控制的改动，也请写一下是只跑了离线回放，还是已经接 Pico 在游戏里试过。
 
-在 Issue 中描述问题，或 Fork 后向 `main` 提交 Pull Request。上传大体积复现录制前，先讨论需要哪一小段数据。
+改了配置或启动方式的话，顺手把文档一起改掉。日志、录像、虚拟环境、SDK 和个人配置不用提交。需要用录像复现问题时，先截取能说明问题的一小段。
+
+贡献的代码沿用仓库的 [PolyForm Noncommercial 1.0.0](LICENSE) 许可。引用第三方代码请保留原来的许可和归属。
